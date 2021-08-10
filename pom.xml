@@ -115,19 +115,6 @@
                     </nonFilteredFileExtensions>
                 </configuration>
             </plugin>
-
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>prod</id>
-            <properties>
-                <maven.test.skip>true</maven.test.skip>
-                <activatedProperties>prod</activatedProperties>
-                <activeByDefault>true</activeByDefault>
-            </properties>
-        </profile>
-    </profiles>
-
 </project>
