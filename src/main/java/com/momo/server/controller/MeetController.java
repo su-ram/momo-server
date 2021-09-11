@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 
 import javax.validation.Valid;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -20,34 +21,41 @@ import com.momo.server.dto.request.MeetSaveRequestDto;
 import com.momo.server.dto.response.MeetInfoRespDto;
 import com.momo.server.service.MeetService;
 
-import lombok.RequiredArgsConstructor;
-
 @RestController
-@RequiredArgsConstructor
 @RequestMapping(value = "/api/meet")
 public class MeetController {
 
-    private final MeetService meetService;
+  private final MeetService meetService;
 
-    @PostMapping
-    public ResponseEntity<?> createMeet(@RequestBody @Valid MeetSaveRequestDto requestDto,
-	    BindingResult bindingResult) {
+  @Autowired
+  public MeetController(MeetService meetService) {
+    this.meetService = meetService;
+  }
 
-	String hashedUrl = Hashing.sha256().hashString(requestDto.toString(), StandardCharsets.UTF_8).toString()
-		.substring(0, 15);
-	meetService.createMeet(requestDto, hashedUrl);
+  @PostMapping
+  public ResponseEntity<?> createMeet(@RequestBody @Valid MeetSaveRequestDto requestDto,
+      BindingResult bindingResult) {
 
-	ResponseEntity<?> responseCode = ResponseEntity.status(HttpStatus.CREATED).build();
-	return new ResponseEntity<>(new CmRespDto<>(responseCode, "약속 생성 성공", hashedUrl), HttpStatus.CREATED);
-    };
+    String hashedUrl = Hashing.sha256().hashString(requestDto.toString(), StandardCharsets.UTF_8)
+        .toString()
+        .substring(0, 15);
+    meetService.createMeet(requestDto, hashedUrl);
 
-    @GetMapping("/{meetId}")
-    public ResponseEntity<?> getMeetInfo(@PathVariable("meetId") String meetId) {
+    ResponseEntity<?> responseCode = ResponseEntity.status(HttpStatus.CREATED).build();
+    return new ResponseEntity<>(new CmRespDto<>(responseCode, "약속 생성 성공", hashedUrl),
+        HttpStatus.CREATED);
+  }
 
-	MeetInfoRespDto meetInfoRespDto = meetService.getMeetInfo(meetId);
+  ;
 
-	ResponseEntity<?> responseCode = ResponseEntity.status(HttpStatus.OK).build();
-	return new ResponseEntity<>(new CmRespDto<>(responseCode, "약속조회 성공", meetInfoRespDto), HttpStatus.OK);
-    }
+  @GetMapping("/{meetId}")
+  public ResponseEntity<?> getMeetInfo(@PathVariable("meetId") String meetId) {
+
+    MeetInfoRespDto meetInfoRespDto = meetService.getMeetInfo(meetId);
+
+    ResponseEntity<?> responseCode = ResponseEntity.status(HttpStatus.OK).build();
+    return new ResponseEntity<>(new CmRespDto<>(responseCode, "약속조회 성공", meetInfoRespDto),
+        HttpStatus.OK);
+  }
 
 }

@@ -8,6 +8,7 @@ import com.momo.server.dto.TimeSlotRespEntry;
 import com.momo.server.dto.auth.SessionUser;
 import com.momo.server.dto.response.MostLeastRespDto;
 import com.momo.server.utils.NumConvert;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,24 +22,30 @@ import com.momo.server.exception.notfound.UserNotFoundException;
 import com.momo.server.repository.MeetRepository;
 import com.momo.server.repository.UserRepository;
 
-import lombok.RequiredArgsConstructor;
-
 @Service
-@RequiredArgsConstructor
 public class TimeService {
 
     private final UserRepository userRepository;
     private final MeetRepository meetRepository;
 
+    @Autowired
+    public TimeService(UserRepository userRepository, MeetRepository meetRepository) {
+        this.userRepository = userRepository;
+        this.meetRepository = meetRepository;
+    }
+
     /*
      * 유저시간 업데이트 및 약속시간 업데이트 메소드
      */
     @Transactional
-    public ResponseEntity<?> updateUsertime(SessionUser userEntity, UserTimeUpdateRequestDto requestDto) {
+    public ResponseEntity<?> updateUsertime(SessionUser userEntity,
+        UserTimeUpdateRequestDto requestDto) {
 
-        Optional.ofNullable(userEntity).orElseThrow(() -> new UserNotFoundException(userEntity.getUserId()));
+        Optional.ofNullable(userEntity)
+            .orElseThrow(() -> new UserNotFoundException(userEntity.getUserId()));
         Meet meetEntity = meetRepository.findMeet(userEntity.getMeetId());
-        Optional.ofNullable(meetEntity).orElseThrow(() -> new MeetNotFoundException(userEntity.getMeetId()));
+        Optional.ofNullable(meetEntity)
+            .orElseThrow(() -> new MeetNotFoundException(userEntity.getMeetId()));
 
         ArrayList<LocalDate> dates = meetEntity.getDates();
         int[][] temp_userTimes = userEntity.getUserTimes();
@@ -58,14 +65,19 @@ public class TimeService {
                 if (requestDto.getUsertimes().get(j).getDate().equals(dates.get(i))) {
                     col = i;
                     // requestDto의 시간배열 크기만큼 반복
-                    for (int t = 0; t < requestDto.getUsertimes().get(j).getTimeslots().size(); t++) {
-                        String timeslot = requestDto.getUsertimes().get(j).getTimeslots().get(t).getTime();
+                    for (int t = 0; t < requestDto.getUsertimes().get(j).getTimeslots().size();
+                        t++) {
+                        String timeslot = requestDto.getUsertimes().get(j).getTimeslots().get(t)
+                            .getTime();
                         int row = getRowByUserTimeUpdate(gap, totalStartMin, timeslot);
                         // true일 때 좌표값 1로 세팅,false일때 좌표값 0으로 세팅
                         if (requestDto.getUsertimes().get(j).getTimeslots().get(t).getPossible()) {
-                            setOneToUserMeetTime(temp_userTimes, temp_Times[row], num, userIndex, col, row);
-                        } else if (!requestDto.getUsertimes().get(j).getTimeslots().get(t).getPossible()) {
-                            setZeroToUserMeetTime(temp_userTimes, temp_Times[row], num, userIndex, col, row);
+                            setOneToUserMeetTime(temp_userTimes, temp_Times[row], num, userIndex,
+                                col, row);
+                        } else if (!requestDto.getUsertimes().get(j).getTimeslots().get(t)
+                            .getPossible()) {
+                            setZeroToUserMeetTime(temp_userTimes, temp_Times[row], num, userIndex,
+                                col, row);
                         }
                     }
                 }
@@ -83,7 +95,8 @@ public class TimeService {
         return userIndex;
     }
 
-    private void setZeroToUserMeetTime(int[][] temp_userTimes, int[] temp_time, int num, int userIndex, int col, int row) {
+    private void setZeroToUserMeetTime(int[][] temp_userTimes, int[] temp_time, int num,
+        int userIndex, int col, int row) {
         temp_userTimes[row][col] = 0;
         int[] bin = NumConvert.decToBin(num, temp_time[col]);
         bin[userIndex] = 0;
@@ -91,7 +104,8 @@ public class TimeService {
         temp_time[col] = dec;
     }
 
-    private void setOneToUserMeetTime(int[][] temp_userTimes, int[] temp_time, int num, int userIndex, int col, int row) {
+    private void setOneToUserMeetTime(int[][] temp_userTimes, int[] temp_time, int num,
+        int userIndex, int col, int row) {
         temp_userTimes[row][col] = 1;
         // 1. 기존의 10진수를 2진수로 변환
         int[] bin = NumConvert.decToBin(num, temp_time[col]);
@@ -133,19 +147,21 @@ public class TimeService {
         User userEntity = userRepository.findUser(user);
         Optional.ofNullable(user).orElseThrow(() -> new UserNotFoundException(user.getUserId()));
         Meet meetEntity = meetRepository.findMeet(user.getMeetId());
-        Optional.ofNullable(meetEntity).orElseThrow(() -> new MeetNotFoundException(user.getMeetId()));
+        Optional.ofNullable(meetEntity)
+            .orElseThrow(() -> new MeetNotFoundException(user.getMeetId()));
 
         int[][] userTimes = userEntity.getUserTimes();
         int gap = meetEntity.getGap();
         LocalDate startDate = meetEntity.getDates().get(0);
         String start = meetEntity.getStart();
-        int dayOfMonth = startDate.getDayOfMonth();
+        Integer dayOfMonth = startDate.getDayOfMonth();
         int totalStartMin = getTotalMin(start);
 
         // 2차원 배열 돌면서 데이터 매핑
         for (int i = 0; i < userTimes[0].length; i++) {
             LinkedHashMap<String, Boolean> timeMap = new LinkedHashMap<>();
-            String temp_date = startDate.getYear() + "/" + startDate.getMonthValue() + "/" + dayOfMonth;
+            String temp_date =
+                startDate.getYear() + "-" + addZeroToValue(startDate.getMonthValue()) + "-" + addZeroToValue(dayOfMonth);
             int temp_totalStartMin = totalStartMin;
             for (int j = 0; j < userTimes.length; j++) {
                 mapToTimeMap(userTimes, i, timeMap, temp_totalStartMin, j);
@@ -158,8 +174,19 @@ public class TimeService {
         return userMeetRespDto;
     }
 
-    private void mapToTimeMap(int[][] userTimes, int i, LinkedHashMap<String, Boolean> timeMap, int temp_totalStartTime, int j) {
-        String key = String.valueOf(temp_totalStartTime / 60) + ":" + String.valueOf(temp_totalStartTime % 60);
+    private String addZeroToValue(int num){
+        String strNum = String.valueOf(num);
+        if(strNum.length()==1){
+            return "0"+strNum;
+        }else{
+            return strNum;
+        }
+    }
+
+    private void mapToTimeMap(int[][] userTimes, int i, LinkedHashMap<String, Boolean> timeMap,
+        int temp_totalStartTime, int j) {
+        String key = String.valueOf(temp_totalStartTime / 60) + ":" + String.valueOf(
+            addZeroToValue(temp_totalStartTime % 60));
         if (userTimes[j][i] == 0) {
             timeMap.put(key, false);
         } else if (userTimes[j][i] == 1) {
@@ -167,7 +194,8 @@ public class TimeService {
         }
     }
 
-    private void setUserMeetRespDto(SessionUser user, UserMeetRespDto userMeetRespDto, LinkedHashMap<String, LinkedHashMap<String, Boolean>> planList, Meet meetEntity) {
+    private void setUserMeetRespDto(SessionUser user, UserMeetRespDto userMeetRespDto,
+        LinkedHashMap<String, LinkedHashMap<String, Boolean>> planList, Meet meetEntity) {
         userMeetRespDto.setMeetId(user.getMeetId());
         userMeetRespDto.setPlanList(planList);
         userMeetRespDto.setColorDate(getColorDate(meetEntity));
@@ -187,9 +215,9 @@ public class TimeService {
         sumTwoDimArrayVertical(colorDate, times);
         Month firstMonth = dates.get(0).getMonth();
         //전체 날짜만큼 반복
-        for(int i=0;i<dates.size();){
+        for (int i = 0; i < dates.size(); ) {
             //달의 날짜 개수 세기 ex) 7월 26,27,28,29,30,31일이면 6
-            int MonthDayCount=0;
+            int MonthDayCount = 0;
             for (LocalDate date : dates) {
                 if (date.getMonth() == firstMonth) {
                     MonthDayCount++;
@@ -197,12 +225,12 @@ public class TimeService {
             }
             LinkedHashMap<Integer, Integer> dayCountMap = new LinkedHashMap<>();
             //해당 달의 날짜수만큼 반복하면서 날짜와 colorDate 맵에 입력
-            for(int j=0;j<MonthDayCount;j++,i++){
+            for (int j = 0; j < MonthDayCount; j++, i++) {
                 dayCountMap.put(dates.get(i).getDayOfMonth(), colorDate.get(i));
             }
             //해당 달의 값 입력
             monthDayMap.put(firstMonth.getValue(), dayCountMap);
-            firstMonth=firstMonth.plus(1);
+            firstMonth = firstMonth.plus(1);
         }
         return monthDayMap;
     }
@@ -275,17 +303,17 @@ public class TimeService {
 
         for (int i = 0; i < times[0].length; i++) {
             int tempStartMin = totalStartMin;
-            for (int j = 0; j < times.length;j++,tempStartMin = tempStartMin + gap) {
+            for (int j = 0; j < times.length; j++, tempStartMin = tempStartMin + gap) {
                 TimeSlotRespEntry timeSlotRespEntry = new TimeSlotRespEntry();
                 ArrayList<String> timeSlotUsers = new ArrayList<>();
                 int possibleMinStart = tempStartMin;
                 String possibleStart = splitToHourMin(possibleMinStart);
                 //숫자가 같을때까지 돌리기
-                while(j < times.length - 1){
-                    if(times[j][i] != times[j + 1][i]){
+                while (j < times.length - 1) {
+                    if (times[j][i] != times[j + 1][i]) {
                         break;
                     }
-                    j=j+1;
+                    j = j + 1;
                     tempStartMin = tempStartMin + gap;
                 }
                 int possibleMinEnd = tempStartMin + gap;
@@ -293,7 +321,8 @@ public class TimeService {
 
                 int[] bin = NumConvert.decToBin(num, times[j][i]);
                 addTimeSlotUsers(users, timeSlotUsers, bin);
-                setTimeSlotRespEntry(meetEntity, dates, i, timeSlotRespEntry, timeSlotUsers, possibleStart, possibleEnd);
+                setTimeSlotRespEntry(meetEntity, dates, i, timeSlotRespEntry, timeSlotUsers,
+                    possibleStart, possibleEnd);
                 list.add(timeSlotRespEntry);
             }
         }
@@ -310,7 +339,8 @@ public class TimeService {
         return String.valueOf(totalMin / 60) + ":" + tempRestMin;
     }
 
-    private void addTimeSlotUsers(ArrayList<String> users, ArrayList<String> timeSlotUsers, int[] bin) {
+    private void addTimeSlotUsers(ArrayList<String> users, ArrayList<String> timeSlotUsers,
+        int[] bin) {
         for (int t = 0; t < bin.length; t++) {
             if (bin[t] == 1) {
                 timeSlotUsers.add(users.get(t));
@@ -318,7 +348,9 @@ public class TimeService {
         }
     }
 
-    private void setTimeSlotRespEntry(Meet meetEntity, ArrayList<LocalDate> dates, int i, TimeSlotRespEntry timeSlotRespEntry, ArrayList<String> timeSlotUsers, String possibleStart, String possibleEnd) {
+    private void setTimeSlotRespEntry(Meet meetEntity, ArrayList<LocalDate> dates, int i,
+        TimeSlotRespEntry timeSlotRespEntry, ArrayList<String> timeSlotUsers, String possibleStart,
+        String possibleEnd) {
         timeSlotRespEntry.setDate(dates.get(i));
         timeSlotRespEntry.setMeetId(meetEntity.getMeetId());
         timeSlotRespEntry.setUsers(timeSlotUsers);
@@ -331,10 +363,10 @@ public class TimeService {
      */
     private String getStringMinFromZero(int restMin) {
         String strRestMin = null;
-        if(restMin ==0){
-            strRestMin =String.valueOf(restMin)+"0";
-        } else{
-            strRestMin =String.valueOf(restMin);
+        if (restMin == 0) {
+            strRestMin = String.valueOf(restMin) + "0";
+        } else {
+            strRestMin = String.valueOf(restMin);
         }
         return strRestMin;
     }

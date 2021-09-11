@@ -7,6 +7,7 @@ import javax.servlet.http.HttpSession;
 import javax.validation.Valid;
 
 import com.momo.server.dto.auth.SessionUser;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -21,39 +22,43 @@ import com.momo.server.dto.request.LoginRequestDto;
 import com.momo.server.service.UserService;
 import com.momo.server.utils.Aes128;
 
-import lombok.RequiredArgsConstructor;
-
 @RestController
-@RequiredArgsConstructor
 @RequestMapping(value = "/api/user")
 public class UserController {
 
-    private final UserService userService;
-    private final HttpSession httpSession;
+  private final UserService userService;
+  private final HttpSession httpSession;
 
-    @Value("${aesKey}")
-    private String key;
+  @Value("${aesKey}")
+  private String key;
 
-    @RequestMapping(value = "/login", method = RequestMethod.POST)
-    public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto loginRequestDto,
-	    HttpServletRequest request, HttpServletResponse response) throws Exception {
+  @Autowired
+  public UserController(UserService userService, HttpSession httpSession) {
+    this.userService = userService;
+    this.httpSession = httpSession;
+  }
 
-	User userEntity = userService.login(loginRequestDto);
-	ResponseEntity<?> responseCode;
+  @RequestMapping(value = "/login", method = RequestMethod.POST)
+  public ResponseEntity<?> login(@Valid @RequestBody LoginRequestDto loginRequestDto,
+      HttpServletRequest request, HttpServletResponse response) throws Exception {
 
-	request.setAttribute("authuser", loginRequestDto);
-	Aes128 aes128 = new Aes128(key);
-	String enc = aes128.encrypt(userEntity.getUserId().toString());// 유저이름으로 암호화시켜도 안전한지 모르겠습니다
-	Cookie authCookie = new Cookie("authuser", enc);
-	authCookie.setHttpOnly(false);
-	response.addCookie(authCookie);
+    User userEntity = userService.login(loginRequestDto);
+    ResponseEntity<?> responseCode;
 
-	httpSession.setAttribute("sessionuser", new SessionUser(userEntity));
+    request.setAttribute("authuser", loginRequestDto);
+    Aes128 aes128 = new Aes128(key);
+    String enc = aes128.encrypt(userEntity.getUserId().toString());// 유저이름으로 암호화시켜도 안전한지 모르겠습니다
+    Cookie authCookie = new Cookie("authuser", enc);
+    authCookie.setHttpOnly(false);
+    response.addCookie(authCookie);
 
-	responseCode = ResponseEntity.status(HttpStatus.OK).build();
-	return new ResponseEntity<>(new CmRespDto<>(responseCode, "유저 로그인 성공", userEntity), HttpStatus.OK);
+    httpSession.setAttribute("sessionuser", new SessionUser(userEntity));
 
-    }
+    responseCode = ResponseEntity.status(HttpStatus.OK).build();
+    return new ResponseEntity<>(new CmRespDto<>(responseCode, "유저 로그인 성공", userEntity),
+        HttpStatus.OK);
+
+  }
 
 
 

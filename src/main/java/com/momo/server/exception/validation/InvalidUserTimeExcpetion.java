@@ -1,4 +1,4 @@
-package com.momo.server.exception.valid;
+package com.momo.server.exception.validation;
 
 import java.util.Map;
 
@@ -8,15 +8,15 @@ public class InvalidUserTimeExcpetion extends RuntimeException {
     private Map<String, String> errorMap;
 
     public InvalidUserTimeExcpetion(String message, Map<String, String> errorMap) {
-	super(message);
-	this.errorMap = errorMap;
+        super(message);
+        this.errorMap = errorMap;
     }
 
     public InvalidUserTimeExcpetion(String message) {
-	super(message);
+        super(message);
     }
 
     public Map<String, String> getErrorMap() {
-	return errorMap;
+        return errorMap;
     }
 }
